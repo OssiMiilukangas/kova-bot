@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/OssiMiilukangas/kovabot#readme",
   "dependencies": {
+    "axios": "^0.21.0",
     "discord.js": "^12.5.1",
     "nodemon": "^2.0.6"
   }
