@@ -1,7 +1,7 @@
 const axios = require('axios').default;
-//const tokens = require("./tokens.js");
+const tokens = require("./tokens.js");
 
-const faceitToken = process.env.faceitToken;
+const faceitToken = tokens.faceitToken;
 const faceitUrl = "https://open.faceit.com/data/v4";
 
 module.exports = class Faceit {
@@ -13,6 +13,7 @@ module.exports = class Faceit {
     let player = {
       id: null,
       username: this.username,
+      avatar: null,
       country: null,
       level: null,
       elo: null,
@@ -31,6 +32,7 @@ module.exports = class Faceit {
     })
     .then(res => {
       player.id = res.data.player_id;
+      player.avatar = res.data.avatar;
       player.country = res.data.country;
       player.level = res.data.games.csgo.skill_level;
       player.elo = res.data.games.csgo.faceit_elo;

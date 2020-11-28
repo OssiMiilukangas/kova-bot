@@ -1,8 +1,8 @@
 const { Client, MessageEmbed } = require("discord.js");
-const Faceit = require("./Faceit.js");
 const client = new Client();
-//const tokens = require("./tokens.js");
-const discordToken = process.env.discordToken;
+const Faceit = require("./Faceit.js");
+const tokens = require("./tokens.js");
+const discordToken = tokens.discordToken;
 
 const prefix = "!";
 
@@ -29,13 +29,25 @@ client.on("message", msg => {
         faceit.getPlayerStats().then(data => {
           // on success
           const embed = new MessageEmbed()
-            .setTitle(`${data.username}\t:flag_${data.country}:`)
+            .setAuthor("Faceit stats")
             .setColor(faceitColor)
-            .setDescription(`**MATCHES: ${data.matches}\t|\tLEVEL: ${data.level}\t|\tELO: ${data.elo}**\n\n\
-                            k/d ratio:\t${data.kd}\nwinrate:\t${data.wr}\nheadshot %:\t${data.hsPct}`);
+            .setTitle(`${data.username}\t:flag_${data.country}:`)
+            .setURL("https://www.faceit.com/en/players/" + data.username)
+            .setThumbnail(data.avatar)
+            .addFields(
+              { name: "Matches", value: data.matches, inline: true },
+              { name: "Level", value: data.level, inline: true },
+              { name: "ELO", value: data.elo, inline: true },
+              //{ name: "\u200B", value: "\u200B" }, blank field
+              { name: "Winrate %", value: data.wr, inline: true },
+              { name: "K/D ratio", value: data.kd, inline: true },
+              { name: "Headshot %", value: data.hsPct, inline: true },
+            )
+
           msg.channel.send(embed);
         })
         .catch((error) => {
+          console.log(error);
           if(error === 404) {
             msg.channel.send("**Faceit user not found.**");
           } else {
