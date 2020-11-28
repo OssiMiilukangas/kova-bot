@@ -1,12 +1,10 @@
 const { Client, MessageEmbed } = require("discord.js");
+const Faceit = require("./Faceit.js");
 const client = new Client();
-const axios = require('axios').default;
 const tokens = require("./tokens.js");
 
 const prefix = "!";
 
-const faceitToken = tokens.faceitToken;
-const faceitUrl = "https://open.faceit.com/data/v4";
 const faceitColor = 0xff5500;
 
 client.on("ready", () => {
@@ -19,66 +17,47 @@ client.on("message", msg => {
 
   // faceit features
   if(msg.content.startsWith(prefix + "faceit")) {
+    // split command into parts
     let command = msg.content.split(" ");
 
-    if(command[1] !== undefined) {
-      let player = {
-        id: 0,
-        level: 0,
-        elo: 0,
-        kd: 0,
-        wr: 0,
-        matches: 0,
-        wins: 0,
-        hsPct: 0,
-        wStreak: 0
-      }
+    switch(command[1]) {
+      // player stats
+      case "-s":
+        const faceit = new Faceit(command[2]);
 
-      axios({
-        method: "GET",
-        url: faceitUrl + "/players",
-        headers: { Authorization: "Bearer " + faceitToken },
-        params: { nickname: msg.content.slice(7) }
-      })
-      .then(res => {
-        player.id = res.data.player_id;
-        player.level = res.data.games.csgo.skill_level;
-        player.elo = res.data.games.csgo.faceit_elo;
-
-        axios({
-          method: "GET",
-          url: faceitUrl + "/players/" + player.id + "/stats/csgo",
-          headers: { Authorization: "Bearer " + faceitToken }
+        faceit.getPlayerStats().then(data => {
+          // on success
+          const embed = new MessageEmbed()
+            .setTitle(`${data.username}\t:flag_${data.country}:`)
+            .setColor(faceitColor)
+            .setDescription(`**MATCHES: ${data.matches}\t|\tLEVEL: ${data.level}\t|\tELO: ${data.elo}**\n\n\
+                            k/d ratio:\t${data.kd}\nwinrate:\t${data.wr}\nheadshot %:\t${data.hsPct}`);
+          msg.channel.send(embed);
         })
-        .then(res => {
-          player.kd = res.data.lifetime["Average K/D Ratio"];
-          player.wr = res.data.lifetime["Win Rate %"];
-          player.matches = res.data.lifetime.Matches;
-          player.wins = res.data.lifetime.Wins;
-          player.hsPct = res.data.lifetime["Average Headshots %"];
-          player.wStreak = res.data.lifetime["Longest Win Streak"];
+        .catch((error) => {
+          if(error === 404) {
+            msg.channel.send("**Faceit user not found.**");
+          } else {
+            msg.channel.send("**Unknown error.**");
+          }
+        });
 
-          console.log(player);
-        })
-        .catch(error => {
-          console.log(error);
-        })
+        break;
 
-      })
-      .catch(error => {
-        console.log(error);
-        if(error.response.status === 404) {
-          msg.channel.send("**Faceit user not found.**");
-        }
-      })
-    }
-    // Command info
-    else {
-      const embed = new MessageEmbed()
-        .setTitle("Faceit features")
-        .setColor(faceitColor)
-        .setDescription('- **!faceit {username}**: Get stats\n- **!faceit -lm {username}**: Get scoreboard of your last match');
-      msg.channel.send(embed);
+      // Last match scoreboard
+      case "-lm":
+        
+        break;
+
+      // command info
+      default:
+        const embed = new MessageEmbed()
+          .setTitle("Faceit tool commands:")
+          .setColor(faceitColor)
+          .setDescription('- **!faceit -s {username}**: Get stats\n\
+                          - **!faceit -lm {username}**: Get scoreboard of your last match');
+        msg.channel.send(embed);
+        break;
     }
   }
 });
