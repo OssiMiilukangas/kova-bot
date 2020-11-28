@@ -1,7 +1,8 @@
 const { Client, MessageEmbed } = require("discord.js");
 const Faceit = require("./Faceit.js");
 const client = new Client();
-const tokens = require("./tokens.js");
+//const tokens = require("./tokens.js");
+const discordToken = process.env.discordToken;
 
 const prefix = "!";
 
@@ -62,5 +63,5 @@ client.on("message", msg => {
   }
 });
 
-client.login(tokens.discordToken);
+client.login(discordToken);
 
