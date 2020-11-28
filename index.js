@@ -1,8 +1,8 @@
 const { Client } = require("discord.js");
 const client = new Client();
 const faceit = require("./faceit.js");
-const tokens = require("./tokens.js");
-const discordToken = tokens.discordToken;
+//const tokens = require("./tokens.js");
+const discordToken = process.env.discordToken;
 
 const prefix = "!";
 
