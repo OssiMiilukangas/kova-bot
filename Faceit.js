@@ -1,5 +1,5 @@
 const axios = require('axios').default;
-const tokens = require("./tokens.js");
+//const tokens = require("./tokens.js");
 
 const faceitToken = process.env.faceitToken;
 const faceitUrl = "https://open.faceit.com/data/v4";
