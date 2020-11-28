@@ -1,6 +1,6 @@
 const { Client } = require("discord.js");
 const client = new Client();
-const faceit = require("./Faceit.js");
+const faceit = require("./faceit.js");
 const tokens = require("./tokens.js");
 const discordToken = tokens.discordToken;
 
@@ -14,18 +14,19 @@ client.on("message", msg => {
   if(msg.author.bot) return;
   if(!msg.content.startsWith(prefix)) return;
 
-  // split command into parts
+  // Split command into parts
   let command = msg.content.split(" ");
 
-  // faceit features
-  if(command[0] === prefix + "faceit") {
+  // Faceit features
+  if(command[0] === `${prefix}faceit`) {
     switch(command[1]) {
 
-      // player stats
+      // Player stats
       case "-s":
-        msg.channel.send("**Getting stats...**");
+        msg.channel.send("**Fetching stats...**");
         faceit.getPlayerStats(command[2])
         .then(data => {
+          console.log(data);
           if(msg.channel.lastMessage.author === client.user) msg.channel.lastMessage.delete();
           faceit.printPlayerStats(msg, data);
         })
@@ -45,7 +46,7 @@ client.on("message", msg => {
         
         break;
 
-      // command info
+      // Command info
       default:
         faceit.printCommandInfo(msg);
         break;

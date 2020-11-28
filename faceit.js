@@ -13,25 +13,30 @@ module.exports = {
       username: username,
       avatar: null,
       country: null,
+      region: null,
       level: null,
       elo: null,
       kd: null,
       wr: null,
       matches: null,
       hsPct: null,
-      wStreak: null
+      wStreak: null,
+      regionRank: null,
+      countryRank: null,
     }
 
+    // Get player details
     await axios({
       method: "GET",
-      url: faceitUrl + "/players",
-      headers: { Authorization: "Bearer " + faceitToken },
-      params: { nickname: player.username }
+      url: `${faceitUrl}/players`,
+      params: { nickname: player.username },
+      headers: { Authorization: "Bearer " + faceitToken }
     })
     .then(res => {
       player.id = res.data.player_id;
       player.avatar = res.data.avatar;
       player.country = res.data.country;
+      player.region = res.data.games.csgo.region;
       player.level = res.data.games.csgo.skill_level;
       player.elo = res.data.games.csgo.faceit_elo;
     })
@@ -40,9 +45,10 @@ module.exports = {
       return Promise.reject(error.response.status);
     })
 
+    // Get players csgo stats
     await axios({
       method: "GET",
-      url: faceitUrl + "/players/" + player.id + "/stats/csgo",
+      url: `${faceitUrl}/players/${player.id}/stats/csgo`,
       headers: { Authorization: "Bearer " + faceitToken }
     })
     .then(res => {
@@ -56,6 +62,37 @@ module.exports = {
       console.log(error);
       return Promise.reject(error.response.status);
     })
+
+    // Get csgo country ranking
+    await axios({
+      method: "GET",
+      url: `${faceitUrl}/rankings/games/csgo/regions/${player.region}/players/${player.id}`,
+      params: { country: player.country, limit: 1 },
+      headers: { Authorization: "Bearer " + faceitToken },
+    })
+    .then(res => {
+      player.countryRank = res.data.position;
+    })
+    .catch(error => {
+      console.log(error);
+      return Promise.reject(error.response.status);
+    })
+
+    // Get csgo region ranking
+    await axios({
+      method: "GET",
+      url: `${faceitUrl}/rankings/games/csgo/regions/${player.region}/players/${player.id}`,
+      params: { limit: 1 },
+      headers: { Authorization: "Bearer " + faceitToken },
+    })
+    .then(res => {
+      player.regionRank = res.data.position;
+    })
+    .catch(error => {
+      console.log(error);
+      return Promise.reject(error.response.status);
+    })
+
     return player;
   },
 
@@ -67,10 +104,12 @@ module.exports = {
       .setURL("https://www.faceit.com/en/players/" + data.username)
       .setThumbnail(data.avatar)
       .addFields(
-        { name: "Matches", value: data.matches, inline: true },
+        { name: "Ranking:", value: "\u200B", inline: true},
+        { name: data.country.toUpperCase(), value: data.countryRank, inline: true },
+        { name: data.region, value: data.regionRank, inline: true },
         { name: "Level", value: data.level, inline: true },
         { name: "ELO", value: data.elo, inline: true },
-        //{ name: "\u200B", value: "\u200B" }, blank field
+        { name: "Matches", value: data.matches, inline: true },
         { name: "Winrate %", value: data.wr, inline: true },
         { name: "K/D ratio", value: data.kd, inline: true },
         { name: "Headshot %", value: data.hsPct, inline: true },
@@ -83,8 +122,9 @@ module.exports = {
     const embed = new MessageEmbed()
       .setTitle("Faceit tool commands:")
       .setColor(faceitColor)
-      .setDescription('- **!faceit -s {username}**: Get stats\n\
-                      - **!faceit -lm {username}**: Get scoreboard of your last match');
+      .setDescription("- **!faceit -s {username}**: Get stats\n\
+                      - **!faceit -lt {username}**: Get last 20 match average stats (Coming soon)\n\
+                      - **!faceit -lm {username}**: Get scoreboard of your last match (Coming soon)");
     msg.channel.send(embed);
   }
 }
