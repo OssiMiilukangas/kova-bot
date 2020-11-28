@@ -1,18 +1,16 @@
+const { MessageEmbed } = require("discord.js");
 const axios = require('axios').default;
 const tokens = require("./tokens.js");
 
 const faceitToken = tokens.faceitToken;
 const faceitUrl = "https://open.faceit.com/data/v4";
+const faceitColor = 0xff5500;
 
-module.exports = class Faceit {
-  constructor(username) {
-    this.username = username;
-  }
-
-  async getPlayerStats() {
+module.exports = {
+  async getPlayerStats(username) {
     let player = {
       id: null,
-      username: this.username,
+      username: username,
       avatar: null,
       country: null,
       level: null,
@@ -58,7 +56,35 @@ module.exports = class Faceit {
       console.log(error);
       return Promise.reject(error.response.status);
     })
-
     return player;
+  },
+
+  printPlayerStats(msg, data) {
+    const embed = new MessageEmbed()
+      .setAuthor("Faceit stats")
+      .setColor(faceitColor)
+      .setTitle(`${data.username}\t:flag_${data.country}:`)
+      .setURL("https://www.faceit.com/en/players/" + data.username)
+      .setThumbnail(data.avatar)
+      .addFields(
+        { name: "Matches", value: data.matches, inline: true },
+        { name: "Level", value: data.level, inline: true },
+        { name: "ELO", value: data.elo, inline: true },
+        //{ name: "\u200B", value: "\u200B" }, blank field
+        { name: "Winrate %", value: data.wr, inline: true },
+        { name: "K/D ratio", value: data.kd, inline: true },
+        { name: "Headshot %", value: data.hsPct, inline: true },
+      )
+
+    msg.channel.send(embed);
+  },
+
+  printCommandInfo(msg) {
+    const embed = new MessageEmbed()
+      .setTitle("Faceit tool commands:")
+      .setColor(faceitColor)
+      .setDescription('- **!faceit -s {username}**: Get stats\n\
+                      - **!faceit -lm {username}**: Get scoreboard of your last match');
+    msg.channel.send(embed);
   }
 }
