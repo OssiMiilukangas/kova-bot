@@ -1,13 +1,16 @@
 const { MessageEmbed } = require("discord.js");
 const axios = require('axios').default;
-//const tokens = require("./tokens.js");
+const tokens = require("./tokens.js");
 
-const faceitToken = process.env.faceitToken;
+const faceitToken = tokens.faceitToken;
 const faceitUrl = "https://open.faceit.com/data/v4";
 const faceitColor = 0xff5500;
 
 module.exports = {
-  async getPlayerStats(username) {
+  async getPlayerStats(client, msg, username) {
+    // Message to give user feedback
+    msg.channel.send("**Fetching stats...**");
+
     let player = {
       id: null,
       username: username,
@@ -93,6 +96,11 @@ module.exports = {
       return Promise.reject(error.response.status);
     })
 
+    // Delete the feedback message
+    if(msg.channel.lastMessage.author === client.user) { 
+      msg.channel.lastMessage.delete();
+    }
+
     return player;
   },
 
@@ -103,8 +111,9 @@ module.exports = {
       .setTitle(`${data.username}\t:flag_${data.country}:`)
       .setURL("https://www.faceit.com/en/players/" + data.username)
       .setThumbnail(data.avatar)
+      .setDescription("=====================================")
       .addFields(
-        { name: "Ranking:", value: "\u200B", inline: true},
+        { name: "\u200B", value: "**Ranking:**", inline: true},
         { name: data.country.toUpperCase(), value: data.countryRank, inline: true },
         { name: data.region, value: data.regionRank, inline: true },
         { name: "Level", value: data.level, inline: true },
@@ -116,6 +125,118 @@ module.exports = {
       )
 
     msg.channel.send(embed);
+  },
+
+  async getRecentAverage(username, gameCount) {
+    let gameIds = [];
+
+    let player = {
+      id: null,
+      username: username,
+      kills: null,
+      deaths: null,
+      assists: null,
+      headshots: null,
+      hsPct: null,
+      kdRatio: null,
+      krRatio: null,
+      mvps: null,
+      rounds: null,
+      wins: null
+    }
+
+    let totalStats = {
+      kills: null,
+      deaths: null,
+      assists: null,
+      headshots: null,
+      hsPct: null,
+      kdRatio: null,
+      krRatio: null,
+      mvps: null,
+      rounds: null,
+      wins: null
+    }
+
+    // Get player id
+    await axios({
+      method: "GET",
+      url: `${faceitUrl}/players`,
+      params: { nickname: player.username },
+      headers: { Authorization: "Bearer " + faceitToken }
+    })
+    .then(res => {
+      player.id = res.data.player_id;
+    })
+    .catch(error => {
+      console.log(error);
+      return Promise.reject(error.response.status);
+    });
+
+    // Get match ids
+    await axios({
+      method: "GET",
+      url: `${faceitUrl}/players/${player.id}/history`,
+      params: { game: "csgo", limit: gameCount, from: 0 },
+      headers: { Authorization: "Bearer " + faceitToken }
+    })
+    .then(res => {
+      res.data.items.forEach(e => {
+        gameIds.push(e.match_id);
+      });
+    })
+    .catch(error => {
+      console.log(error);
+      return Promise.reject(error.response.status);
+    });
+
+    // Get stats
+    let count = 0;
+
+    for await (e of gameIds) {
+      axios({
+        method: "GET",
+        url: `${faceitUrl}/matches/${e}/stats`,
+        headers: { Authorization: "Bearer " + faceitToken }
+      })
+      .then(res => {
+        // Find stat object of the user
+        const match = res.data.rounds[0]
+        let found = match.teams[0].players.find(element => element.nickname === player.username);
+
+        if (found === undefined) {
+          found = match.teams[1].players.find(element => element.nickname === player.username)
+        }
+
+        // Sum up all users stats
+        totalStats.kills += +found.player_stats.Kills;
+        totalStats.deaths += +found.player_stats.Deaths;
+        totalStats.assists += +found.player_stats.Assists;
+        totalStats.headshots += +found.player_stats.Headshot;
+        totalStats.hsPct += +found.player_stats["Headshots %"];
+        totalStats.kdRatio += +found.player_stats["K/D Ratio"];
+        totalStats.krRatio += +found.player_stats["K/R Ratio"];
+        totalStats.mvps += +found.player_stats.MVPs;
+        totalStats.rounds += +match.round_stats.Rounds;
+        totalStats.wins += +found.player_stats.Result;
+
+        count++;
+
+        // If all looped
+        if(count === gameIds.length) {
+          // Calculate averages
+          for (const property in totalStats) {
+            player[property] = totalStats[property] / gameCount;
+          }
+          console.log(player);
+          return player;
+        }
+      })
+      .catch(error => {
+        console.log(error);
+        return Promise.reject(error.response.status);
+      })
+    }
   },
 
   printCommandInfo(msg) {
