@@ -7,6 +7,8 @@ const faceitUrl = "https://open.faceit.com/data/v4";
 const faceitColor = 0xff5500;
 
 module.exports = {
+  faceitToken,
+  faceitUrl,
   async getPlayerStats(client, msg, username) {
     // Message to give user feedback
     msg.channel.send("**Fetching stats...**");
@@ -127,25 +129,12 @@ module.exports = {
     msg.channel.send(embed);
   },
 
-  async getRecentAverage(username, gameCount) {
-    let gameIds = [];
+  async getLastMatchIds(username, gameCount) {
+    let matchIds = [];
 
     let player = {
       id: null,
       username: username,
-      kills: null,
-      deaths: null,
-      assists: null,
-      headshots: null,
-      hsPct: null,
-      kdRatio: null,
-      krRatio: null,
-      mvps: null,
-      rounds: null,
-      wins: null
-    }
-
-    let totalStats = {
       kills: null,
       deaths: null,
       assists: null,
@@ -182,7 +171,7 @@ module.exports = {
     })
     .then(res => {
       res.data.items.forEach(e => {
-        gameIds.push(e.match_id);
+        matchIds.push(e.match_id);
       });
     })
     .catch(error => {
@@ -190,53 +179,78 @@ module.exports = {
       return Promise.reject(error.response.status);
     });
 
-    // Get stats
-    let count = 0;
+    return matchIds;
+  },
 
-    for await (e of gameIds) {
-      axios({
-        method: "GET",
-        url: `${faceitUrl}/matches/${e}/stats`,
-        headers: { Authorization: "Bearer " + faceitToken }
-      })
-      .then(res => {
-        // Find stat object of the user
-        const match = res.data.rounds[0]
-        let found = match.teams[0].players.find(element => element.nickname === player.username);
-
-        if (found === undefined) {
-          found = match.teams[1].players.find(element => element.nickname === player.username)
-        }
-
-        // Sum up all users stats
-        totalStats.kills += +found.player_stats.Kills;
-        totalStats.deaths += +found.player_stats.Deaths;
-        totalStats.assists += +found.player_stats.Assists;
-        totalStats.headshots += +found.player_stats.Headshot;
-        totalStats.hsPct += +found.player_stats["Headshots %"];
-        totalStats.kdRatio += +found.player_stats["K/D Ratio"];
-        totalStats.krRatio += +found.player_stats["K/R Ratio"];
-        totalStats.mvps += +found.player_stats.MVPs;
-        totalStats.rounds += +match.round_stats.Rounds;
-        totalStats.wins += +found.player_stats.Result;
-
-        count++;
-
-        // If all looped
-        if(count === gameIds.length) {
-          // Calculate averages
-          for (const property in totalStats) {
-            player[property] = totalStats[property] / gameCount;
-          }
-          console.log(player);
-          return player;
-        }
-      })
-      .catch(error => {
-        console.log(error);
-        return Promise.reject(error.response.status);
-      })
+  calculateAverages(username, responses, matchCount) {
+    let totalStats = averageStats = {
+      kills: null,
+      deaths: null,
+      assists: null,
+      headshots: null,
+      hsPct: null,
+      kdRatio: null,
+      krRatio: null,
+      mvps: null,
+      rounds: null,
+      wins: null
     }
+
+    responses.forEach(res => {
+      // Find stat object of the user
+      const match = res.data.rounds[0]
+      let found = match.teams[0].players.find(element => element.nickname === username);
+
+      if (found === undefined) {
+        found = match.teams[1].players.find(element => element.nickname === username)
+      }
+
+      // Sum up all users stats
+      totalStats.kills += +found.player_stats.Kills;
+      totalStats.deaths += +found.player_stats.Deaths;
+      totalStats.assists += +found.player_stats.Assists;
+      totalStats.headshots += +found.player_stats.Headshot;
+      totalStats.hsPct += +found.player_stats["Headshots %"];
+      totalStats.kdRatio += +found.player_stats["K/D Ratio"];
+      totalStats.krRatio += +found.player_stats["K/R Ratio"];
+      totalStats.mvps += +found.player_stats.MVPs;
+      totalStats.rounds += +match.round_stats.Rounds;
+      totalStats.wins += +found.player_stats.Result;
+    })
+
+    // Calculate averages
+    for (const property in totalStats) {
+      if(property !== "kdRatio" && property !== "krRatio" && property !== "wins") {
+        averageStats[property] = Math.round(totalStats[property] / matchCount);
+      } else if (property !== "wins") {
+        averageStats[property] = Math.round(((totalStats[property] / matchCount) + Number.EPSILON) * 100) / 100;
+      } else {
+        averageStats[property] = Math.round(((totalStats[property] / matchCount) + Number.EPSILON) * 100);
+      }
+    }
+
+    return averageStats;
+  },
+
+  printAverageStats(msg, username, data, matchCount) {
+    const embed = new MessageEmbed()
+      .setAuthor("Faceit stats")
+      .setColor(faceitColor)
+      .setTitle(`${username}'s last ${matchCount} matches average stats:`)
+      .setDescription("=====================================")
+      .addFields(
+        { name: "Kills", value: data.kills, inline: true },
+        { name: "Deaths", value: data.deaths, inline: true },
+        { name: "Assists", value: data.assists, inline: true },
+        { name: "Headshot %", value: data.hsPct, inline: true },
+        { name: "K/D ratio", value: data.kdRatio, inline: true },
+        { name: "K/R ratio", value: data.krRatio, inline: true },
+        { name: "Winrate %", value: data.wins, inline: true },
+        { name: "Rounds", value: data.rounds, inline: true },
+        { name: "MVPs", value: data.mvps, inline: true },
+      )
+
+    msg.channel.send(embed);
   },
 
   printCommandInfo(msg) {
@@ -244,7 +258,7 @@ module.exports = {
       .setTitle("Faceit tool commands:")
       .setColor(faceitColor)
       .setDescription("- **!faceit -s {username}**: Get stats\n\
-                      - **!faceit -lt {username}**: Get last 20 match average stats (Coming soon)\n\
+                      - **!faceit -rs {username}**: Get last 20 matches average stats\n\
                       - **!faceit -lm {username}**: Get scoreboard of your last match (Coming soon)");
     msg.channel.send(embed);
   }

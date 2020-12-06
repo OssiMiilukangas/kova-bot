@@ -1,5 +1,6 @@
 const { MessageEmbed, Client } = require("discord.js");
 const client = new Client();
+const axios = require('axios').default;
 const faceit = require("./faceit.js");
 const tokens = require("./tokens.js");
 const discordToken = tokens.discordToken;
@@ -50,9 +51,34 @@ client.on("message", msg => {
 
       // Last 20 match average stats
       case "-rs":
-        faceit.getRecentAverage(command[2], 20)
+        matchCount = 20;
+
+        faceit.getLastMatchIds(command[2], matchCount)
         .then(data => {
-          console.log(data);
+          // Doing get match requests asynchronously here because I couldn't get this to work otherwise
+          let promises = [];
+          let responses = [];
+          data.forEach(e => {
+            promises.push(
+              axios({
+                method: "GET",
+                url: `${faceit.faceitUrl}/matches/${e}/stats`,
+                headers: { Authorization: "Bearer " + faceit.faceitToken }
+              })
+              .then(res => {
+                responses.push(res);
+              })
+              .catch(error => {
+                console.log(error);
+              })
+            );
+          })
+
+          Promise.all(promises).then(() => {
+            averageStats = faceit.calculateAverages(command[2], responses, matchCount);
+            console.log(averageStats);
+            faceit.printAverageStats(msg, command[2], averageStats, matchCount);
+          });
         })
         break;
 
