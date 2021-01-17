@@ -1,8 +1,8 @@
 const { MessageEmbed } = require("discord.js");
 const axios = require('axios').default;
-//const tokens = require("./tokens.js");
+const tokens = require("./tokens.js");
 
-const faceitToken = process.env.faceitToken;
+const faceitToken = tokens.faceitToken;
 const faceitUrl = "https://open.faceit.com/data/v4";
 const faceitColor = 0xff5500;
 
@@ -206,16 +206,21 @@ module.exports = {
       }
 
       // Sum up all users stats
-      totalStats.kills += +found.player_stats.Kills;
-      totalStats.deaths += +found.player_stats.Deaths;
-      totalStats.assists += +found.player_stats.Assists;
-      totalStats.headshots += +found.player_stats.Headshot;
-      totalStats.hsPct += +found.player_stats["Headshots %"];
-      totalStats.kdRatio += +found.player_stats["K/D Ratio"];
-      totalStats.krRatio += +found.player_stats["K/R Ratio"];
-      totalStats.mvps += +found.player_stats.MVPs;
-      totalStats.rounds += +match.round_stats.Rounds;
-      totalStats.wins += +found.player_stats.Result;
+      if (found !== undefined) {
+        totalStats.kills += +found.player_stats.Kills;
+        totalStats.deaths += +found.player_stats.Deaths;
+        totalStats.assists += +found.player_stats.Assists;
+        totalStats.headshots += +found.player_stats.Headshot;
+        totalStats.hsPct += +found.player_stats["Headshots %"];
+        totalStats.kdRatio += +found.player_stats["K/D Ratio"];
+        totalStats.krRatio += +found.player_stats["K/R Ratio"];
+        totalStats.mvps += +found.player_stats.MVPs;
+        totalStats.rounds += +match.round_stats.Rounds;
+        totalStats.wins += +found.player_stats.Result;
+      } else {
+        // If player stats were not found from match data, exclude match from count
+        matchCount = matchCount - 1;
+      }
     })
 
     // Calculate averages
