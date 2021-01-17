@@ -53,7 +53,7 @@ client.on("message", msg => {
       case "-rs":
         matchCount = 20;
 
-        faceit.getLastMatchIds(command[2], matchCount)
+        faceit.getLastMatchIds(client, msg, command[2], matchCount)
         .then(data => {
           // Doing get match requests asynchronously here because I couldn't get this to work otherwise
           let promises = [];
@@ -75,10 +75,17 @@ client.on("message", msg => {
           })
 
           Promise.all(promises).then(() => {
-            averageStats = faceit.calculateAverages(command[2], responses, matchCount);
+            averageStats = faceit.calculateAverages(client, msg, command[2], responses, matchCount);
             console.log(averageStats);
             faceit.printAverageStats(msg, command[2], averageStats, matchCount);
           });
+        })
+        .catch(error => {
+          if(error === 404) {
+            msg.channel.send("**Faceit user not found.**");
+          } else {
+            msg.channel.send("**Unknown error.**");
+          }
         })
         break;
 
