@@ -1,8 +1,8 @@
 const { MessageEmbed } = require("discord.js");
 const axios = require('axios').default;
-const tokens = require("./tokens.js");
+//const tokens = require("./tokens.js");
 
-const faceitToken = tokens.faceitToken;
+const faceitToken = process.env.faceitToken;
 const faceitUrl = "https://open.faceit.com/data/v4";
 const faceitColor = 0xff5500;
 
