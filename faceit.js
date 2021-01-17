@@ -129,7 +129,7 @@ module.exports = {
     msg.channel.send(embed);
   },
 
-  async getLastMatchIds(username, gameCount) {
+  async getLastMatchIds(client, msg, username, gameCount) {
     let matchIds = [];
 
     let player = {
@@ -146,6 +146,9 @@ module.exports = {
       rounds: null,
       wins: null
     }
+
+    // Message to give user feedback
+    msg.channel.send("**Fetching stats...**");
 
     // Get player id
     await axios({
@@ -182,7 +185,7 @@ module.exports = {
     return matchIds;
   },
 
-  calculateAverages(username, responses, matchCount) {
+  calculateAverages(client, msg, username, responses, matchCount) {
     let totalStats = averageStats = {
       kills: null,
       deaths: null,
@@ -232,6 +235,11 @@ module.exports = {
       } else {
         averageStats[property] = Math.round(((totalStats[property] / matchCount) + Number.EPSILON) * 100);
       }
+    }
+
+    // Delete the feedback message
+    if(msg.channel.lastMessage.author === client.user) { 
+      msg.channel.lastMessage.delete();
     }
 
     return averageStats;
